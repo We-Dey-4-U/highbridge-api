@@ -2,18 +2,25 @@
 // Create a new staff report
 const StaffReport = require('../models/StaffReport');
 
-// Create a new staff report
+
+
 exports.createStaffReport = async (req, res) => {
     try {
-      const { sn, branch, name, email, mobileNumber, privateNote, date, timeIn, timeOut } = req.body;
-
-      const currentTime = new Date();
-      const currentHour = currentTime.getHours();
-      const isAfter6PM = currentHour >= 18;
-
-      // Allow setting timeOut only after 6 PM and store it
-      const finalTimeOut = isAfter6PM ? timeOut : undefined; // Only accept timeOut after 6 PM
-
+      const { branch, name, email, mobileNumber, privateNote, date, timeIn, timeOut } = req.body;
+  
+      // Get today's date (YYYY-MM-DD format)
+      const today = new Date().toISOString().split('T')[0];
+  
+      // Count staff reports for today
+      const todayCount = await StaffReport.countDocuments({ date: today });
+  
+      if (todayCount >= 20) {
+        return res.status(400).json({ message: 'Maximum 20 staff reports allowed per day' });
+      }
+  
+      // Assign serial number (starts from 1 daily)
+      const sn = todayCount + 1;
+  
       const newStaffReport = new StaffReport({
         sn,
         branch,
@@ -21,18 +28,17 @@ exports.createStaffReport = async (req, res) => {
         email,
         mobileNumber,
         privateNote,
-        date,
+        date: today, // Ensure date is stored as today
         timeIn,
-        timeOut: finalTimeOut // Save timeOut only if it's after 6 PM
+        timeOut,
       });
-
+  
       await newStaffReport.save();
       res.status(201).json({ message: 'Staff report created successfully!', data: newStaffReport });
     } catch (error) {
       res.status(400).json({ message: 'Error creating staff report', error: error.message });
     }
-};
-
+  };
 
 
 // Get all staff reports

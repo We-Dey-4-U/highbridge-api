@@ -4,7 +4,7 @@ const mongoose = require('mongoose');
 const staffReportSchema = new mongoose.Schema({
     sn: {
       type: Number,
-      required: true,
+      required: false, // No longer required since it's assigned automatically
     },
     branch: {
       type: String,
