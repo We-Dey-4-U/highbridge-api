@@ -11,37 +11,39 @@ const getInventory = async (req, res) => {
 };
 
 // Add a new inventory item
+// Add a new inventory item
 const addInventoryItem = async (req, res) => {
-    const { particulars, productCode, qty, unitPrice, qtyIn, qtyOut } = req.body;
-  
-    try {
-      // Calculate `no` for the new item
-      const lastItem = await EnergyInventory.findOne().sort({ no: -1 });
-      const newNo = lastItem ? lastItem.no + 1 : 1;
-  
-      const newItem = new EnergyInventory({
-        no: newNo,
-        particulars,
-        productCode,
-        qty,
-        unitPrice,
-        qtyIn,
-        qtyOut,
-        amount: qty * unitPrice, // Automatically calculated
-        totalPrice: qty * unitPrice, // Dynamically calculated here
-      });
-  
-      const savedItem = await newItem.save();
-      res.status(201).json(savedItem);
-    } catch (error) {
-      res.status(400).json({ message: error.message });
-    }
-  };
+  const { particulars, productCode, qty, unitPrice, qtyIn, qtyOut } = req.body;
+
+  try {
+    // Calculate `no` for the new item
+    const lastItem = await EnergyInventory.findOne().sort({ no: -1 });
+    const newNo = lastItem ? lastItem.no + 1 : 1;
+
+    const newItem = new EnergyInventory({
+      no: newNo,
+      particulars,
+      productCode,
+      qty,
+      unitPrice,
+      qtyIn,
+      qtyOut,
+      amount: qty * unitPrice, // Automatically calculated
+      totalPrice: qty * unitPrice, // Dynamically calculated here
+    });
+
+    const savedItem = await newItem.save();
+    res.status(201).json(savedItem);
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
+};
 
 
 
 
-// Update stock levels
+
+
 // Update stock levels
 const updateInventory = async (req, res) => {
   const { id } = req.params;
@@ -51,18 +53,16 @@ const updateInventory = async (req, res) => {
     const item = await EnergyInventory.findById(id);
     if (!item) return res.status(404).json({ message: "Item not found" });
 
-    // Update quantities
     item.qty += qtyIn - qtyOut;
     item.qtyIn += qtyIn;
     item.qtyOut += qtyOut;
 
-    // Update unit price if provided
     if (unitPrice !== undefined) {
       item.unitPrice = unitPrice;
     }
 
-    // Recalculate total price whenever qty or unit price changes
-    item.totalPrice = item.qty * item.unitPrice;
+    // Recalculate amount based on qty and unitPrice
+    item.amount = item.qty * item.unitPrice;
 
     const updatedItem = await item.save();
     res.status(200).json(updatedItem);

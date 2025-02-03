@@ -22,13 +22,12 @@ const energyInventorySchema = new mongoose.Schema({
   },
   unitPrice: {
     type: Number,
-    required: true,
+    default: null, // Optional field
   },
   amount: {
     type: Number,
-    required: true,
     default: function () {
-      return this.qty * this.unitPrice;
+      return this.qty * (this.unitPrice || 0); // Ensure amount calculates correctly even if unitPrice is missing
     },
   },
   qtyOut: {
@@ -40,19 +39,7 @@ const energyInventorySchema = new mongoose.Schema({
     type: Number,
     required: true,
     default: 0,
-  },
-  totalPrice: {
-    type: Number,
-    default: function () {
-      return this.qty * this.unitPrice; // Dynamically calculated
-    },
-  },
+  }
 }, { timestamps: true });
-
-// Pre-save middleware to calculate totalPrice dynamically
-energyInventorySchema.pre('save', function(next) {
-  this.totalPrice = this.qty * this.unitPrice;  // Calculate totalPrice dynamically
-  next();
-});
 
 module.exports = mongoose.model('EnergyInventory', energyInventorySchema);
