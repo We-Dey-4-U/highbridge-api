@@ -8,6 +8,8 @@ const reportRoutes = require("./routes/reportRoutes");
 const energyInventoryRoutes = require("./routes/energyInventoryRoutes");
 const staffReportRoutes = require("./routes/staffReportRoutes");
 const realtorRoutes = require("./routes/realtorRoutes");
+const digitalMarketingRoutes = require("./routes/digitalMarketingRoutes");
+const paymentRoutes = require("./routes/paymentRoutes"); // Ensure this is properly imported
 
 const app = express();
 
@@ -29,6 +31,8 @@ app.use("/api/reports", reportRoutes);
 app.use("/api/energy-inventory", energyInventoryRoutes);
 app.use("/api", staffReportRoutes);
 app.use("/api/realtors", realtorRoutes);
+app.use("/api/digital-marketing", digitalMarketingRoutes);
+app.use("/api/payments", paymentRoutes); // Ensure payments route is added
 
 // Port setup
 const port = process.env.PORT || 5000;
