@@ -10,6 +10,8 @@ const staffReportRoutes = require("./routes/staffReportRoutes");
 const realtorRoutes = require("./routes/realtorRoutes");
 const digitalMarketingRoutes = require("./routes/digitalMarketingRoutes");
 const paymentRoutes = require("./routes/paymentRoutes"); // Ensure this is properly imported
+const agrovestWebinarRoutes = require("./routes/agrovestWebinarRoutes");
+
 
 const app = express();
 
@@ -33,6 +35,8 @@ app.use("/api", staffReportRoutes);
 app.use("/api/realtors", realtorRoutes);
 app.use("/api/digital-marketing", digitalMarketingRoutes);
 app.use("/api/payments", paymentRoutes); // Ensure payments route is added
+app.use("/api/agrovest", agrovestWebinarRoutes);
+
 
 // Port setup
 const port = process.env.PORT || 5000;
