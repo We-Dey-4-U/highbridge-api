@@ -1,24 +1,33 @@
 const mongoose = require("mongoose");
-const { v4: uuidv4 } = require('uuid');
+const bcrypt = require("bcryptjs");
 
-const paymentSchema = new mongoose.Schema({
-    payment_id: {
-      type: String,
-      unique: true,
-      default: () => require('uuid').v4(),
-    },
-    tx_ref: {
-      type: String,
-      required: true,
-      unique: true
-    },
-    name: { type: String, required: true },
-    email: { type: String, required: true },
-    phone: { type: String, required: true },
-    plan: { type: String, required: true },
-    amount: { type: Number, required: true },
-    status: { type: String, required: true, enum: ["pending", "successful", "failed"] },
-    createdAt: { type: Date, default: Date.now }
-  });
-  
-  module.exports = mongoose.model("Payment", paymentSchema);
+// Investment Schema
+const InvestmentSchema = new mongoose.Schema({
+  plan: { type: String, required: true }, 
+  amount: { type: Number, required: true },
+  startDate: { type: Date, default: Date.now },
+  maturityDate: { type: Date, required: true },
+  status: { type: String, enum: ["Active", "Completed", "Pending"], default: "Pending" },
+  tx_ref: { type: String, required: true, unique: true } // Flutterwave transaction reference
+}, { timestamps: true });
+
+// User Schema
+const UserSchema = new mongoose.Schema({
+  name: { type: String, required: true },
+  email: { type: String, required: true, unique: true },
+  phone: { type: String, required: true },
+  password: { type: String, required: true },
+  kycVerified: { type: Boolean, default: false },
+  investments: [InvestmentSchema], // Array of investment plans
+  createdAt: { type: Date, default: Date.now }
+});
+
+// Hash password before saving
+UserSchema.pre("save", async function (next) {
+  if (!this.isModified("password")) return next();
+  const salt = await bcrypt.genSalt(10);
+  this.password = await bcrypt.hash(this.password, salt);
+  next();
+});
+
+module.exports = mongoose.model("User", UserSchema);
