@@ -1,29 +1,29 @@
 const mongoose = require("mongoose");
 const bcrypt = require("bcryptjs");
 
-// Investment Schema
-const InvestmentSchema = new mongoose.Schema({
-  plan: { type: String, required: true }, 
-  amount: { type: Number, required: true },
-  startDate: { type: Date, default: Date.now },
-  maturityDate: { type: Date, required: true },
-  status: { type: String, enum: ["Active", "Completed", "Pending"], default: "Pending" },
-  tx_ref: { type: String, required: true } // Renamed from transactionId to trx
-}, { timestamps: true });
+require("./Investment");
 
-// User Schema
 const UserSchema = new mongoose.Schema({
   name: { type: String, required: true },
-  email: { type: String, required: true, unique: true },
+  email: { type: String, unique: true, index: true },
   phone: { type: String, required: true },
   password: { type: String, required: true },
   kycVerified: { type: Boolean, default: false },
-  investments: [InvestmentSchema], // Array of investment plans
+  investments: [{ type: mongoose.Schema.Types.ObjectId, ref: "Investment" }],
+  payments: [{ type: mongoose.Schema.Types.ObjectId, ref: "Payment" }], // New reference
   createdAt: { type: Date, default: Date.now }
 });
 
 // Hash password before saving
+UserSchema.pre("save", async function (next) {
+  if (!this.isModified("password")) return next();
+  this.password = await bcrypt.hash(this.password, 10);
+  next();
+});
 
-
+// Method to compare password
+UserSchema.methods.comparePassword = async function (password) {
+  return bcrypt.compare(password, this.password);
+};
 
 module.exports = mongoose.model("User", UserSchema);

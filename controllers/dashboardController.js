@@ -2,28 +2,37 @@ const User = require("../models/User");
 
 exports.getUserDashboard = async (req, res) => {
   try {
-    const userId = req.user.id; // Get logged-in user ID from middleware
-    console.log("Fetching dashboard for user:", userId);
-    // Fetch user details excluding password
-    const user = await User.findById(userId).select("-password");
+    if (!req.user || !req.user.id) {
+      return res.status(401).json({ message: "Unauthorized access" });
+    }
+
+    const userId = req.user.id;
+    const user = await User.findById(userId).populate("investments");
+
     if (!user) {
-        console.error("User not found");
       return res.status(404).json({ message: "User not found" });
     }
 
-    // Customize dashboard response
-    const dashboardData = {
+    const totalInvestments = user.investments.length || 0;
+
+    res.json({
       name: user.name,
       email: user.email,
-      phone: user.phone,
-      investments: user.investments,
-      kycVerified: user.kycVerified,
-      totalInvestments: user.investments.length,
-    };
-
-    res.json(dashboardData);
+      phone: user.phone || "Not Provided",
+      kycVerified: user.kycVerified || false,
+      totalInvestments,
+      investments: user.investments.map((investment) => ({
+        id: investment._id,
+        plan: investment.plan,
+        amount: investment.amount,
+        startDate: investment.startDate,
+        maturityDate: investment.maturityDate,
+        expectedReturns: investment.expectedReturns, // Already calculated in Schema
+        status: investment.status,
+      })),
+    });
   } catch (error) {
-    console.error("Error fetching user dashboard:", error);
-    res.status(500).json({ message: "Server Error" });
+    console.error("Error fetching user dashboard:", error.message);
+    res.status(500).json({ message: "Internal server error" });
   }
 };
