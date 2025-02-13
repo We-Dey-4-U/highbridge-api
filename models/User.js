@@ -14,6 +14,17 @@ const UserSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now }
 });
 
+// Virtual field for investment details
+UserSchema.virtual("investmentDetails", {
+  ref: "Investment",
+  localField: "_id",
+  foreignField: "user",
+});
+
+// Ensure virtuals are included in JSON and Object outputs
+UserSchema.set("toJSON", { virtuals: true });
+UserSchema.set("toObject", { virtuals: true });
+
 // Hash password before saving
 UserSchema.pre("save", async function (next) {
   if (!this.isModified("password")) return next();

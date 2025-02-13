@@ -43,4 +43,15 @@ InvestmentSchema.pre('validate', function (next) {
     next();
 });
 
+// Virtual population for user details
+InvestmentSchema.virtual("userDetails", {
+    ref: "User",
+    localField: "user",
+    foreignField: "_id",
+    justOne: true,
+});
+
+InvestmentSchema.set("toJSON", { virtuals: true });
+InvestmentSchema.set("toObject", { virtuals: true });
+
 module.exports = mongoose.model('Investment', InvestmentSchema);

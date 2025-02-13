@@ -7,7 +7,11 @@ exports.getUserDashboard = async (req, res) => {
     }
 
     const userId = req.user.id;
-    const user = await User.findById(userId).populate("investments");
+    const user = await User.findById(userId).populate({
+      path: "investments",
+      model: "Investment",
+      select: "plan amount startDate maturityDate expectedReturns status"
+    });
 
     if (!user) {
       return res.status(404).json({ message: "User not found" });

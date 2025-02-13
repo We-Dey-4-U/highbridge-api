@@ -34,6 +34,7 @@ exports.createInvestment = async (req, res) => {
     // Add investment to user profile
     user.investments.push(newInvestment._id);
     await user.save();
+await user.populate("investments");
 
     res.status(201).json({
       message: "Investment created successfully",
