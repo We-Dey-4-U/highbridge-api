@@ -12,7 +12,7 @@ exports.createInvestment = async (req, res) => {
     }
 
     // Ensure the plan is valid
-    const validPlans = ["6-months", "9-months", "12-months", "18-months"];
+    const validPlans = ["6m", "9m", "12m", "18m"]; // Match schema format
     if (!validPlans.includes(plan)) {
       return res.status(400).json({ error: "Invalid investment plan" });
     }
@@ -43,7 +43,7 @@ exports.createInvestment = async (req, res) => {
         amount: newInvestment.amount,
         startDate: newInvestment.startDate,
         maturityDate: newInvestment.maturityDate,
-        expectedReturn: newInvestment.expectedReturn, // Virtual field
+        expectedReturns: newInvestment.expectedReturns, // Corrected field name
         status: newInvestment.status,
       },
     });
@@ -52,6 +52,10 @@ exports.createInvestment = async (req, res) => {
     res.status(500).json({ error: "Server error" });
   }
 };
+
+
+
+
 
 // Fetch user investments with expected return
 exports.getInvestments = async (req, res) => {

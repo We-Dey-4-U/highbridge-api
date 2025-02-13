@@ -6,8 +6,8 @@ const crypto = require("crypto");
 const dotenv = require("dotenv");
 dotenv.config();
 
-const FLUTTERWAVE_SECRET = process.env.FLUTTERWAVE_SECRET;
-const FLUTTERWAVE_SECRET_HASH = process.env.FLUTTERWAVE_SECRET_HASH;
+const FLUTTERWAVE_SECRET_KEY = process.env.FLUTTERWAVE_SECRET_KEY || "";
+const FLUTTERWAVE_SECRET_HASH = process.env.FLUTTERWAVE_SECRET_HASH || "";
 
 const fetchGot = async () => {
   try {
@@ -24,6 +24,7 @@ const fetchGot = async () => {
 exports.initiateFlutterwavePayment = async (req, res) => {
   try {
     console.log("🚀 Payment initiation route hit!"); // ✅ Check if this appears in the terminal
+
     if (!req.user) {
       console.log("❌ Unauthorized access attempt.");
       return res.status(401).json({ message: "Unauthorized: Please log in" });
@@ -46,24 +47,63 @@ exports.initiateFlutterwavePayment = async (req, res) => {
 
     const tx_ref = `INVEST-${user._id}-${Date.now()}`;
 
+    // Get plan details
+    const planDetails = {
+      '6m': { duration: 180, roi: 0.25 },
+      '9m': { duration: 270, roi: 0.30 },
+      '12m': { duration: 365, roi: 0.50 },
+      '18m': { duration: 540, roi: 0.75 }
+    };
+
+    const selectedPlan = planDetails[plan];
+
+    if (!selectedPlan) {
+      return res.status(400).json({ message: "Invalid plan selected." });
+    }
+
+    // Calculate maturity date
+    const startDate = new Date();
+    const maturityDate = new Date(startDate);
+    maturityDate.setDate(maturityDate.getDate() + selectedPlan.duration);
+
+    
+
     // Create pending investment
     const investment = new Investment({
       user: user._id,
-      investment: investment._id,
       amount,
       plan,
       tx_ref,
       status: "Pending",
+      maturityDate, // ✅ Explicitly setting maturity date
+      
     });
-    await investment.save();
+    await investment.save(); // Save to DB first
+
+     // Ensure virtual field is included
+     const investmentData = investment.toJSON({ virtuals: true });
+
+     // ✅ Reload investment from DB to ensure expectedReturns is available
+     const updatedInvestment = await Investment.findById(investment._id);
+
+    // ✅ Fetch expected return from the saved document
+      const expectedReturns = updatedInvestment.expectedReturns || 0;
 
     const requestBody = {
       tx_ref,
       amount,
-      currency: "USD",
+      currency: "NGN", // ✅ Changed from "USD" to "NGN"
       redirect_url: "http://localhost:3000/payment-success", // Change for production
-      customer: { email: user.email },
-      customizations: { title: "Investment Payment", description: `Plan: ${plan}` },
+      customer: { 
+        email: user.email, 
+        name: user.name, 
+        phone_number: user.phone 
+      },
+      customizations: { 
+        title: "Investment Payment", 
+        description: `Plan: ${plan}` 
+      },
+      expectedReturns, // ✅ Include expectedReturns from the schema
     };
 
     // Dynamically import got
@@ -76,8 +116,12 @@ exports.initiateFlutterwavePayment = async (req, res) => {
     const response = await got.post("https://api.flutterwave.com/v3/payments", {
       json: requestBody,
       responseType: "json",
-      headers: { Authorization: `Bearer ${FLUTTERWAVE_SECRET}`, "Content-Type": "application/json" },
+      headers: { 
+        Authorization: `Bearer ${FLUTTERWAVE_SECRET_KEY}`,
+        "Content-Type": "application/json" 
+      },
     });
+
 
     // ✅ LOG: Response from Flutterwave
     console.log("✅ Flutterwave API Response:", response.body);
@@ -93,6 +137,7 @@ exports.initiateFlutterwavePayment = async (req, res) => {
       user: user._id,
       investment: investment._id,
       amount,
+      currency: "NGN", // ✅ Changed from "USD" to "NGN"
       tx_ref,
       status: "Pending",
     });
@@ -106,66 +151,40 @@ exports.initiateFlutterwavePayment = async (req, res) => {
   }
 };
 
+
+
+
 // **Verify Payment**
 exports.verifyPayment = async (req, res) => {
   try {
-    const { tx_ref } = req.query;
-    if (!tx_ref) {
-      console.log("❌ Transaction reference missing.");
-      return res.status(400).json({ message: "Transaction reference is required" });
-    }
-
-    // Fetch got dynamically
-    const got = await fetchGot();
-
-
-    console.log(`🔍 Verifying payment for tx_ref: ${tx_ref}`);
-
-    const response = await axios.got(
-      `https://api.flutterwave.com/v3/transactions/verify_by_reference?tx_ref=${tx_ref}`,
-      {
-        headers: { Authorization: `Bearer ${FLUTTERWAVE_SECRET}` },
+      const { tx_ref } = req.query;
+      
+      if (!tx_ref) {
+          return res.status(400).json({ error: 'Transaction reference is required' });
       }
-    );
 
-    console.log("🔍 Flutterwave Payment Verification Response:", response.data);
+      const payment = await Payment.findOne({ tx_ref });
+      if (!payment) {
+          return res.status(404).json({ error: 'Payment not found' });
+      }
 
-    if (response.data.status !== "success") {
-      console.error("❌ Payment verification failed with Flutterwave:", response.data);
-      return res.status(400).json({ message: "Failed to verify payment with Flutterwave" });
-    }
+      const flutterwaveResponse = await got.get(`https://api.flutterwave.com/v3/transactions/${tx_ref}/verify`, {
+          headers: { Authorization: `Bearer ${process.env.FLUTTERWAVE_SECRET_KEY}` }
+      });
 
-    const paymentData = response.data.data;
-    if (!paymentData || paymentData.status !== "successful") {
-      console.warn("⚠️ Payment was not successful:", paymentData);
-      return res.status(400).json({ message: "Payment was not successful" });
-    }
-
-    const payment = await Payment.findOne({ tx_ref });
-    if (!payment) {
-      console.error("❌ Payment record not found in database for:", tx_ref);
-      return res.status(404).json({ message: "Payment record not found" });
-    }
-
-    if (payment.status === "Completed") {
-      console.log("✅ Payment already verified:", tx_ref);
-      return res.json({ message: "Payment already verified" });
-    }
-
-    // Mark payment as completed
-    payment.status = "Completed";
-    payment.amount_paid = paymentData.amount;
-    await payment.save();
-
-    await Investment.findByIdAndUpdate(payment.investment, { status: "Active" });
-
-    console.log("🎉 Payment verified and investment activated:", tx_ref);
-    res.json({ message: "Payment verified and investment activated" });
+      if (flutterwaveResponse.data.status === 'success') {
+          payment.status = 'successful';
+      } else {
+          payment.status = 'failed';
+      }
+      
+      await payment.save();
+      res.json(payment);
   } catch (error) {
-    console.error("🚨 Error verifying payment:", error);
-    res.status(500).json({ message: "Error verifying payment" });
+      res.status(500).json({ error: error.message });
   }
 };
+
 
 
 
@@ -210,6 +229,9 @@ exports.handleWebhook = async (req, res) => {
     res.status(500).json({ message: "Error processing webhook" });
   }
 };
+
+
+
 
 
 
