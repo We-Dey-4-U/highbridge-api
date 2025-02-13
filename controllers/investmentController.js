@@ -62,7 +62,7 @@ await user.populate("investments");
 exports.getInvestments = async (req, res) => {
   try {
     const investments = await Investment.find({ user: req.user.id }).populate("user", "name email");
-    
+    console.log("Investments found:", investments);
     const formattedInvestments = investments.map(investment => ({
       id: investment._id,
       plan: investment.plan,

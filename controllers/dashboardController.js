@@ -1,4 +1,5 @@
 const User = require("../models/User");
+const Investment = require("../models/Investment");
 
 exports.getUserDashboard = async (req, res) => {
   try {
@@ -7,17 +8,21 @@ exports.getUserDashboard = async (req, res) => {
     }
 
     const userId = req.user.id;
-    const user = await User.findById(userId).populate({
-      path: "investments",
-      model: "Investment",
-      select: "plan amount startDate maturityDate expectedReturns status"
-    });
+
+    // Fetch user details (excluding password)
+    const user = await User.findById(userId).select("name email phone kycVerified");
 
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
 
-    const totalInvestments = user.investments.length || 0;
+    // Fetch user's investments & sort by startDate (newest first)
+    const investments = await Investment.find({ user: userId })
+      .select("plan amount startDate maturityDate expectedReturns status")
+      .sort({ startDate: -1 });
+
+    // Calculate total invested amount
+    const totalInvestments = investments.reduce((sum, inv) => sum + inv.amount, 0);
 
     res.json({
       name: user.name,
@@ -25,15 +30,7 @@ exports.getUserDashboard = async (req, res) => {
       phone: user.phone || "Not Provided",
       kycVerified: user.kycVerified || false,
       totalInvestments,
-      investments: user.investments.map((investment) => ({
-        id: investment._id,
-        plan: investment.plan,
-        amount: investment.amount,
-        startDate: investment.startDate,
-        maturityDate: investment.maturityDate,
-        expectedReturns: investment.expectedReturns, // Already calculated in Schema
-        status: investment.status,
-      })),
+      investments, // Directly return investments without unnecessary mapping
     });
   } catch (error) {
     console.error("Error fetching user dashboard:", error.message);
