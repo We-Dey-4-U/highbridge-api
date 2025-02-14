@@ -49,10 +49,10 @@ exports.initiateFlutterwavePayment = async (req, res) => {
 
     // Get plan details
     const planDetails = {
-      '6m': { duration: 180, roi: 0.25 },
-      '9m': { duration: 270, roi: 0.30 },
-      '12m': { duration: 365, roi: 0.50 },
-      '18m': { duration: 540, roi: 0.75 }
+      '6months': { duration: 180, roi: 0.25 },
+      '9months': { duration: 270, roi: 0.30 },
+      '12months': { duration: 365, roi: 0.50 },
+      '18months': { duration: 540, roi: 0.75 }
     };
 
     const selectedPlan = planDetails[plan];

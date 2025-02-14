@@ -3,7 +3,7 @@ const mongoose = require("mongoose");
 const InvestmentSchema = new mongoose.Schema({
     user: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
     amount: { type: Number, required: true },
-    plan: { type: String, required: true, enum: ["6m", "9m", "12m", "18m"] },
+    plan: { type: String, required: true, enum: ["6months", "9months", "12months", "18months"] },
     startDate: { type: Date, default: Date.now },
     maturityDate: { type: Date, required: true },
     expectedReturns: { type: Number, required: false },  // Should be assigned explicitly
@@ -17,10 +17,10 @@ const InvestmentSchema = new mongoose.Schema({
 
 // Define plan durations and ROI percentages
 const planDetails = {
-    '6m': { duration: 180, roi: 0.25 },  
-    '9m': { duration: 270, roi: 0.30 },  
-    '12m': { duration: 365, roi: 0.50 }, 
-    '18m': { duration: 540, roi: 0.75 }  
+    '6months': { duration: 180, roi: 0.25 },  
+    '9months': { duration: 270, roi: 0.30 },  
+    '12months': { duration: 365, roi: 0.50 }, 
+    '18months': { duration: 540, roi: 0.75 }  
 };
 
 // Automatically calculate maturity date and expected returns
