@@ -9,7 +9,7 @@ const InvestmentSchema = new mongoose.Schema({
     expectedReturns: { type: Number, required: false },  // Should be assigned explicitly
     status: { 
         type: String, 
-        enum: ["Pending", "Active", "Matured", "Withdrawn"], 
+        enum: ["Pending", "Active", "Cancelled"], 
         default: "Pending" 
     },
     tx_ref: { type: String, required: true, unique: true }, 

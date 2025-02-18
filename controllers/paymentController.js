@@ -155,84 +155,90 @@ exports.initiateFlutterwavePayment = async (req, res) => {
 
 
 // **Verify Payment**
+// **Verify Payment**
 exports.verifyPayment = async (req, res) => {
   try {
-      const { tx_ref } = req.query;
-      
-      if (!tx_ref) {
-          return res.status(400).json({ error: 'Transaction reference is required' });
-      }
+    const { transaction_id } = req.query;
 
-      const payment = await Payment.findOne({ tx_ref });
-      if (!payment) {
-          return res.status(404).json({ error: 'Payment not found' });
-      }
+    if (!transaction_id) {
+      return res.status(400).json({ error: "Transaction ID is required" });
+    }
 
-      const flutterwaveResponse = await got.get(`https://api.flutterwave.com/v3/transactions/${tx_ref}/verify`, {
-          headers: { Authorization: `Bearer ${process.env.FLUTTERWAVE_SECRET_KEY}` }
-      });
+    const response = await axios.get(`https://api.flutterwave.com/v3/transactions/${transaction_id}/verify`, {
+      headers: { Authorization: `Bearer ${FLUTTERWAVE_SECRET_KEY}` },
+    });
 
-      if (flutterwaveResponse.data.status === 'success') {
-          payment.status = 'successful';
-      } else {
-          payment.status = 'failed';
-      }
-      
-      await payment.save();
-      res.json(payment);
+    const paymentData = response.data.data;
+
+    if (paymentData.status !== "successful") {
+      return res.status(400).json({ message: "Payment verification failed" });
+    }
+
+    const payment = await Payment.findOne({ tx_ref: paymentData.tx_ref });
+    if (!payment) {
+      return res.status(404).json({ message: "Payment record not found" });
+    }
+
+    payment.status = "Completed";
+    await payment.save();
+
+    const investment = await Investment.findOne({ tx_ref: payment.tx_ref });
+    if (investment) {
+      investment.status = "Active";
+      await investment.save();
+    }
+
+    res.json({ message: "Payment successfully verified", payment });
+
   } catch (error) {
-      res.status(500).json({ error: error.message });
+    console.error("🚨 Error verifying payment:", error);
+    res.status(500).json({ error: "Internal Server Error" });
   }
 };
-
-
-
-
 
 // **Webhook Handler**
 exports.handleWebhook = async (req, res) => {
   try {
     const signature = req.headers["verif-hash"];
-    if (!signature) return res.status(400).send("Signature missing");
-
-    const computedSignature = crypto.createHmac("sha256", FLUTTERWAVE_SECRET_HASH)
-      .update(JSON.stringify(req.body))
-      .digest("hex");
-
-    if (!crypto.timingSafeEqual(Buffer.from(signature, "utf8"), Buffer.from(computedSignature, "utf8"))) {
-      return res.status(400).send("Invalid signature");
+    if (!signature || signature !== FLUTTERWAVE_SECRET_HASH) {
+      return res.status(401).send("Unauthorized");
     }
 
-    const { tx_ref, status, amount } = req.body.data;
-    let payment = await Payment.findOne({ tx_ref });
-    if (!payment) return res.status(404).json({ message: "Payment record not found" });
+    const { data } = req.body;
 
-    if (status === "successful") {
+    if (!data || !data.tx_ref || !data.status) {
+      return res.status(400).json({ error: "Invalid webhook data" });
+    }
+
+    console.log("🔄 Webhook received:", data);
+
+    const payment = await Payment.findOne({ tx_ref: data.tx_ref });
+    if (!payment) {
+      return res.status(404).json({ error: "Payment not found" });
+    }
+
+    if (payment.status === "Completed") {
+      return res.status(200).send("Payment already updated");
+    }
+
+    if (data.status === "successful") {
       payment.status = "Completed";
-      payment.amount_paid = amount;
       await payment.save();
 
-      await Investment.findByIdAndUpdate(payment.investment, { status: "Active" });
-      return res.status(200).send("Payment confirmed");
+      const investment = await Investment.findOne({ tx_ref: data.tx_ref });
+      if (investment) {
+        investment.status = "Active";
+        await investment.save();
+      }
     }
 
-    if (status === "failed" || status === "cancelled") {
-      payment.status = status;
-      await payment.save();
-      return res.status(200).send("Payment failed/cancelled");
-    }
-
-    res.status(400).json({ message: "Unhandled event type" });
+    res.status(200).json({ message: "Webhook processed successfully" });
 
   } catch (error) {
-    console.error("Webhook Error:", error);
-    res.status(500).json({ message: "Error processing webhook" });
+    console.error("❌ Error handling webhook:", error);
+    res.status(500).json({ error: "Internal Server Error" });
   }
 };
-
-
-
-
 
 
 // Handle Payment Success
