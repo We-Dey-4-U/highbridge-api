@@ -3,6 +3,7 @@ const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
 const bodyParser = require("body-parser");
+const path = require('path'); // Add this line
 
 // Import route files
 const reportRoutes = require("./routes/reportRoutes");
@@ -25,6 +26,9 @@ const app = express();
 // Middleware setup
 app.use(cors());
 app.use(bodyParser.json());
+
+// Static file serving
+app.use('/uploads/profile-images', express.static(path.join(__dirname, 'uploads/profile-images')));
 
 // Database connection
 mongoose

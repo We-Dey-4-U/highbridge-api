@@ -10,7 +10,7 @@ exports.getUserDashboard = async (req, res) => {
     const userId = req.user.id;
 
     // Fetch user details (excluding password)
-    const user = await User.findById(userId).select("name email phone kycVerified");
+    const user = await User.findById(userId).select("name email phone kycVerified referralCode");
 
     if (!user) {
       return res.status(404).json({ message: "User not found" });
@@ -29,8 +29,9 @@ exports.getUserDashboard = async (req, res) => {
       email: user.email,
       phone: user.phone || "Not Provided",
       kycVerified: user.kycVerified || false,
+      referralCode: user.referralCode || "N/A", // Include referral code
       totalInvestments,
-      investments, // Directly return investments without unnecessary mapping
+      investments,
     });
   } catch (error) {
     console.error("Error fetching user dashboard:", error.message);

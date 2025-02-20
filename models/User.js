@@ -1,60 +1,57 @@
 const mongoose = require("mongoose");
 const bcrypt = require("bcryptjs");
+
 require("./Investment");
 
-const generateReferralCode = () => {
-  return Math.floor(1000 + Math.random() * 9000).toString(); // Generates a 4-digit code
-};
+const generateReferralCode = () => Math.floor(1000 + Math.random() * 9000).toString();
+
+const kycSchema = new mongoose.Schema({
+  residentialAddress: { type: String, default: "" },
+  dateOfBirth: { type: String, default: "" },
+  nationality: { type: String, default: "" },
+  maritalStatus: { type: String, default: "" },
+  occupation: { type: String, default: "" },
+  placeOfWork: { type: String, default: "" },
+  workAddress: { type: String, default: "" },
+  idDocumentType: { type: String, enum: ["passport", "driver_license", "national_id"], default: "passport" },
+  idDocumentImage: { type: String, default: "" },
+  nextOfKin: {
+    name: { type: String, default: "" },
+    relationship: { type: String, default: "" },
+    phone: { type: String, default: "" },
+    address: { type: String, default: "" },
+  },
+  bankDetails: {
+    bankName: { type: String, default: "" },
+    accountNumber: { type: String, default: "" },
+    accountName: { type: String, default: "" },
+  },
+  corporateInfo: {
+    corporateName: { type: String, default: "" },
+    corporateAddress: { type: String, default: "" },
+    contactName: { type: String, default: "" },
+    correspondenceAddress: { type: String, default: "" },
+    corporatePhone: { type: String, default: "" },
+    corporateEmail: { type: String, default: "" },
+  },
+}, { _id: false });
 
 const UserSchema = new mongoose.Schema({
   name: { type: String, required: true },
   email: { type: String, unique: true, index: true },
   phone: { type: String, required: true },
   password: { type: String, required: true },
-  kycVerified: { type: Boolean, default: false }, // KYC status
-
-  // Personal Information
-  residentialAddress: { type: String, required: true },
-  dateOfBirth: { type: Date, required: true },
-  nationality: { type: String, required: true },
-  maritalStatus: { type: String, required: true },
-  occupation: { type: String, required: true },
-  placeOfWork: { type: String, required: true },
-  workAddress: { type: String, required: true },
-
-  // Corporate Information (Optional)
-  corporateName: { type: String },
-  corporateAddress: { type: String },
-  contactName: { type: String },
-  correspondenceAddress: { type: String },
-  corporatePhone: { type: String },
-  corporateEmail: { type: String },
-
-  // Next of Kin Information
-  nextOfKinName: { type: String, required: true },
-  nextOfKinRelationship: { type: String, required: true },
-  nextOfKinPhone: { type: String, required: true },
-  nextOfKinAddress: { type: String, required: true },
-  nextOfKinDateOfBirth: { type: Date, required: true },
-  nextOfKinEmail: { type: String, required: true },
-
-  // Bank Details (Part of KYC)
-  bankName: { type: String, required: true },
-  accountNumber: { type: String, required: true },
-  accountName: { type: String, required: true },
-
+  referralCode: { type: String, unique: true, default: generateReferralCode },
+  referer: { type: String, default: null },
+  profileImage: { type: String },
+  kycStatus: { type: String, enum: ["pending", "verified", "rejected"], default: "pending" }, // Track KYC status
+  kycVerified: { type: Boolean, default: false },
+  kycData: { type: kycSchema, default: {} }, // Now `kycData` will always be initialized
   investments: [{ type: mongoose.Schema.Types.ObjectId, ref: "Investment" }],
-  payments: [{ type: mongoose.Schema.Types.ObjectId, ref: "Payment" }],
-
-  referralCode: { type: String, unique: true, default: generateReferralCode }, // Auto-generated 4-digit code
-  referer: { type: String, default: null }, // Name of the referer (if referral code is used)
+  payments: [{ type: mongoose.Schema.Types.ObjectId, ref: "Payment" }], // New reference
 
   createdAt: { type: Date, default: Date.now }
 });
-
-
-
-
 
 // Virtual field for investment details
 UserSchema.virtual("investmentDetails", {
@@ -68,6 +65,7 @@ UserSchema.set("toJSON", { virtuals: true });
 UserSchema.set("toObject", { virtuals: true });
 
 // Hash password before saving
+// Hash password before saving
 UserSchema.pre("save", async function (next) {
   if (!this.isModified("password")) return next();
   this.password = await bcrypt.hash(this.password, 10);
@@ -75,8 +73,8 @@ UserSchema.pre("save", async function (next) {
 });
 
 // Method to compare password
-UserSchema.methods.comparePassword = async function (password) {
-  return bcrypt.compare(password, this.password);
+UserSchema.methods.comparePassword = async function (enteredPassword) {
+  return await bcrypt.compare(enteredPassword, this.password);
 };
 
 module.exports = mongoose.model("User", UserSchema);
