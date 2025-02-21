@@ -1,5 +1,6 @@
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
+require("dotenv").config();
 
 module.exports = async (req, res, next) => {
   try {
@@ -26,3 +27,4 @@ module.exports = async (req, res, next) => {
     res.status(400).json({ message: "Invalid Token" });
   }
 };
+

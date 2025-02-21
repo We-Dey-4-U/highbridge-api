@@ -1,23 +1,19 @@
-// routes/adminRoutes.js
-const express = require('express');
-const { adminLogin, getUsers, deleteUser, updateUserRole, getKYCRequests, approveKYC, rejectKYC, getDashboardStats } = require('../controllers/adminController');
-const { verifyAdmin } = require('../middleware/authMiddleware');
+const express = require("express");
 const router = express.Router();
+const adminAuth = require("../middleware/adminAuth");
+const {
+  getAllUsers,
+  deleteUser,
+  getKYCRequests,
+  updateKYCStatus,
+  getAllInvestments
+} = require("../controllers/adminController");
 
-// Admin Authentication
-router.post('/login', adminLogin);
-
-// User Management
-router.get('/users', verifyAdmin, getUsers);
-router.delete('/users/:id', verifyAdmin, deleteUser);
-router.put('/users/:id/role', verifyAdmin, updateUserRole);
-
-// KYC Management
-router.get('/kyc-requests', verifyAdmin, getKYCRequests);
-router.put('/kyc/:id/approve', verifyAdmin, approveKYC);
-router.put('/kyc/:id/reject', verifyAdmin, rejectKYC);
-
-// Dashboard Stats
-router.get('/stats', verifyAdmin, getDashboardStats);
+// Protect all routes with adminAuth middleware
+router.get("/users", adminAuth, getAllUsers);
+router.delete("/users/:userId", adminAuth, deleteUser);
+router.get("/kyc-requests", adminAuth, getKYCRequests);
+router.patch("/kyc/:userId", adminAuth, updateKYCStatus);
+router.get("/investments", adminAuth, getAllInvestments);
 
 module.exports = router;

@@ -15,6 +15,7 @@ const paymentRoutes = require("./routes/paymentRoutes");
 const authRoutes = require("./routes/authRoutes");
 const dashboardRoutes = require("./routes/dashboardRoutes");
 const investmentRoutes = require("./routes/investmentRoutes"); // New investment route
+const adminRoutes = require("./routes/adminRoutes");
 
 
 
@@ -53,6 +54,8 @@ app.use("/api/payments", paymentRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/investments", investmentRoutes); // Register investment routes
+app.use("/api/admin", adminRoutes);
+
 
 
 // Default route

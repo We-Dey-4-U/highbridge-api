@@ -29,7 +29,7 @@ const validateKYCData = (data) => {
 // **Register User**
 exports.registerUser = async (req, res) => {
   try {
-    const { name, email, phone, password, referralCode } = req.body;
+    const { name, email, phone, password, referralCode, role } = req.body;
 
     if (!name || !email || !phone || !password) {
       return res.status(400).json({ message: "All fields are required" });
@@ -38,42 +38,56 @@ exports.registerUser = async (req, res) => {
     const existingUser = await User.findOne({ email });
     if (existingUser) return res.status(400).json({ message: "User already exists" });
 
-    let referer = null;
+    // Check if there is any admin in the database
+    const existingAdmin = await User.findOne({ role: "admin" });
 
-    // If a referral code is provided, find the referring user
+    let userRole = "user";
+    if (role === "admin") {
+      if (existingAdmin) {
+        // If there's already an admin, enforce authentication
+        if (!req.user || req.user.role !== "admin") {
+          return res.status(403).json({ message: "Only admins can create new admins" });
+        }
+      } else {
+        // If no admin exists, allow this registration as admin
+        userRole = "admin";
+      }
+    }
+
+    let referer = null;
     if (referralCode) {
       const referringUser = await User.findOne({ referralCode });
       if (referringUser) {
-        referer = referringUser.name; // Store referring user's NAME instead of ID
+        referer = referringUser.name;
       } else {
         return res.status(400).json({ message: "Invalid referral code" });
       }
     }
 
-    // Create new user with an empty kycData object
     const newUser = new User({
       name,
       email,
       phone,
       password,
-      referer,
-      kycData: {}, // Ensure kycData field is present even if empty
+      role: userRole,
+      kycData: {},
     });
-    await newUser.save();
 
+    await newUser.save();
     await sendEmail(email, "Welcome!", `<h3>Welcome, ${name}!</h3><p>Your account has been created successfully!</p>`);
 
     res.status(201).json({ 
       message: "Registration successful", 
+      role: newUser.role,
       referralCode: newUser.referralCode, 
       referer: newUser.referer 
     });
+
   } catch (error) {
     console.error("Registration error:", error);
     res.status(500).json({ message: "Server Error" });
   }
 };
-
 
 
 
@@ -88,9 +102,13 @@ exports.loginUser = async (req, res) => {
     }
 
 
-    const token = jwt.sign({ id: user._id, email: user.email }, process.env.JWT_SECRET, { expiresIn: "7d" });
+    const token = jwt.sign({ id: user._id, email: user.email, role: user.role }, process.env.JWT_SECRET, { expiresIn: "7d" });
 
-    res.json({ message: "Login successful", token, user: { id: user._id, name: user.name, email: user.email } });
+    res.json({
+      message: "Login successful",
+      token,
+      user: { id: user._id, name: user.name, email: user.email, role: user.role },
+    });
   } catch (error) {
     console.error("Login error:", error);
     res.status(500).json({ message: "Server Error" });
@@ -206,28 +224,5 @@ exports.updateKYC = async (req, res) => {
 
 
 // **Verify KYC (Admin Only)**
-// Verify or Reject KYC (Admin Only)
-exports.verifyKYC = async (req, res) => {
-  try {
-    const { userId, status } = req.body;
-
-    if (!["verified", "rejected"].includes(status)) {
-      return res.status(400).json({ message: "Invalid status" });
-    }
-
-    const user = await User.findByIdAndUpdate(
-      userId,
-      { kycStatus: status, kycVerified: status === "verified" },
-      { new: true }
-    );
-
-    if (!user) return res.status(404).json({ message: "User not found" });
-
-    res.json({ message: `KYC ${status} successfully`, user });
-  } catch (error) {
-    console.error("KYC Verification Error:", error);
-    res.status(500).json({ message: "Server Error" });
-  }
-};
 
 

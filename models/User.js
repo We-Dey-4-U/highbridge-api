@@ -49,7 +49,7 @@ const UserSchema = new mongoose.Schema({
   kycData: { type: kycSchema, default: {} }, // Now `kycData` will always be initialized
   investments: [{ type: mongoose.Schema.Types.ObjectId, ref: "Investment" }],
   payments: [{ type: mongoose.Schema.Types.ObjectId, ref: "Payment" }], // New reference
-
+  role: { type: String, enum: ["user", "admin"], default: "user" }, // New field for roles
   createdAt: { type: Date, default: Date.now }
 });
 
