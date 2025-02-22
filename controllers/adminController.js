@@ -25,11 +25,21 @@ exports.deleteUser = async (req, res) => {
 };
 
 // Get KYC requests
+// Get KYC requests (only users who have submitted KYC)
 exports.getKYCRequests = async (req, res) => {
   try {
-    const users = await User.find({ "kycData.residentialAddress": { $exists: true }, kycVerified: false });
+    const users = await User.find({
+      "kycData.residentialAddress": { $exists: true, $ne: "" }, 
+      "kycData.dateOfBirth": { $exists: true, $ne: "" }, 
+      "kycData.nationality": { $exists: true, $ne: "" }, 
+      "kycData.maritalStatus": { $exists: true, $ne: "" }, 
+      "kycData.occupation": { $exists: true, $ne: "" }, 
+      kycVerified: false  // Exclude already verified users
+    });
+
     res.status(200).json(users);
   } catch (error) {
+    console.error("Error fetching KYC requests:", error);
     res.status(500).json({ message: "Server Error" });
   }
 };
