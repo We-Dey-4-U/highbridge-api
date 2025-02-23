@@ -5,7 +5,7 @@ const { sendEmail } = require("../config/emailService");
 const multer = require("multer");
 const path = require("path");
 
-// File Upload Middleware for ID document
+
 // Configure Multer for file uploads
 const storage = multer.diskStorage({
   destination: "./uploads/kyc-docs/",
