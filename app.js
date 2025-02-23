@@ -28,8 +28,7 @@ const app = express();
 app.use(cors());
 app.use(bodyParser.json());
 
-// Static file serving
-app.use('/uploads/profile-images', express.static(path.join(__dirname, 'uploads/profile-images')));
+
 
 // Database connection
 mongoose
@@ -41,8 +40,11 @@ mongoose
   .then(() => console.log("Connected to MongoDB"))
   .catch((err) => {
     console.error("Error connecting to MongoDB:", err);
-    process.exit(1); // Exit if the database connection fails
+    process.exit(1); // Exit if the database connection fail
   });
+
+
+  app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 // Routes setup
 app.use("/api/reports", reportRoutes);
