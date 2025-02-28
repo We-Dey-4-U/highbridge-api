@@ -14,6 +14,7 @@ const kycSchema = new mongoose.Schema({
   placeOfWork: { type: String, default: "" },
   workAddress: { type: String, default: "" },
   idDocumentType: { type: String, enum: ["passport", "driver_license", "national_id"], default: "passport" },
+  passportImage: { type: String, default: "" }, 
   idDocumentImage: { type: String, default: "" },
   nextOfKin: {
     name: { type: String, default: "" },

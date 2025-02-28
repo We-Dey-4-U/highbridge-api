@@ -15,7 +15,11 @@ const storage = multer.diskStorage({
     cb(null, filename);
   }
 });
-const upload = multer({ storage }).single("idDocumentImage");
+
+const upload = multer({ storage }).fields([
+  { name: "idDocumentImage", maxCount: 1 },
+  { name: "passportImage", maxCount: 1 }
+]);
 
 // Middleware to validate KYC fields
 const validateKYCData = (data) => {
@@ -185,8 +189,13 @@ exports.updateKYC = async (req, res) => {
       }
 
       // Handle file upload
-      if (req.file) {
-        updatedKYCData.idDocumentImage = req.file.path;
+       // Handle uploaded files
+       if (req.files?.idDocumentImage) {
+        updatedKYCData.idDocumentImage = req.files.idDocumentImage[0].path;
+      }
+
+      if (req.files?.passportImage) {
+        updatedKYCData.passportImage = req.files.passportImage[0].path;
       }
 
       // Ensure empty fields are cleaned up
