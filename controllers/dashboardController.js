@@ -1,5 +1,6 @@
 const User = require("../models/User");
 const Investment = require("../models/Investment");
+const Payment = require("../models/Payment"); // Import Payment Model
 
 exports.getUserDashboard = async (req, res) => {
   try {

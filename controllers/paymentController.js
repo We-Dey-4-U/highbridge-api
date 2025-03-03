@@ -5,6 +5,8 @@ const axios = require("axios"); // Import axios for API requests
 const crypto = require("crypto");
 const dotenv = require("dotenv");
 dotenv.config();
+const { v4: uuidv4 } = require('uuid');
+const tx_ref = uuidv4(); // Generates a unique transaction reference
 
 const FLUTTERWAVE_SECRET_KEY = process.env.FLUTTERWAVE_SECRET_KEY || "";
 const FLUTTERWAVE_SECRET_HASH = process.env.FLUTTERWAVE_SECRET_HASH || "";
@@ -68,7 +70,6 @@ exports.initiateFlutterwavePayment = async (req, res) => {
 
     
 
-    // Create pending investment
     const investment = new Investment({
       user: user._id,
       amount,
@@ -76,8 +77,9 @@ exports.initiateFlutterwavePayment = async (req, res) => {
       tx_ref,
       status: "Pending",
       maturityDate, // ✅ Explicitly setting maturity date
-      
+      paymentMethod: "flutterwave", // ✅ Add this field
     });
+    
     await investment.save(); // Save to DB first
 
      // Ensure virtual field is included
@@ -330,3 +332,96 @@ exports.getPaymentById = async (req, res) => {
     }
   };
 
+
+  
+
+
+
+
+
+  exports.manualPayment = async (req, res) => {
+    try {
+        const { amount, plan, receipt } = req.body;
+        const userId = req.user.id;
+
+        if (!amount || isNaN(amount) || amount <= 0) {
+            return res.status(400).json({ message: "Amount must be a positive number." });
+        }
+        if (!plan || typeof plan !== "string" || plan.trim() === "") {
+            return res.status(400).json({ message: "Plan is required and must be a valid string." });
+        }
+        if (!receipt || typeof receipt !== "string") {
+            return res.status(400).json({ message: "Receipt is required and must be a valid file URL." });
+        }
+
+        const user = await User.findById(userId);
+        if (!user) {
+            return res.status(404).json({ message: "User not found" });
+        }
+
+        const tx_ref = `MANUAL-${user._id}-${Date.now()}`;
+
+        // Get plan details
+        const planDetails = {
+            '6months': { duration: 180, roi: 0.25 },
+            '9months': { duration: 270, roi: 0.30 },
+            '12months': { duration: 365, roi: 0.50 },
+            '18months': { duration: 540, roi: 0.75 }
+        };
+
+        const selectedPlan = planDetails[plan];
+
+        if (!selectedPlan) {
+            return res.status(400).json({ message: "Invalid plan selected." });
+        }
+
+        // Calculate maturity date
+        const startDate = new Date();
+        const maturityDate = new Date(startDate);
+        maturityDate.setDate(maturityDate.getDate() + selectedPlan.duration);
+        const expectedReturns = amount * (1 + selectedPlan.roi);
+
+        // Create investment record
+        const newInvestment = new Investment({
+            user: userId,
+            plan,
+            amount,
+            tx_ref,
+            paymentMethod: "manual",
+            receipt,
+            status: "Pending",
+            maturityDate,
+            expectedReturns,
+        });
+
+        await newInvestment.save();
+
+        // Create payment record
+        const newPayment = new Payment({
+            user: userId,
+            investment: newInvestment._id,
+            amount,
+            currency: "NGN",
+            tx_ref,
+            status: "Pending",
+            paymentMethod: "manual",
+            receipt,
+        });
+
+        await newPayment.save();
+
+        // Update user document with the investment
+        user.investments.push(newInvestment._id);
+        await user.save();
+
+        res.status(201).json({
+            message: "Manual payment and investment recorded successfully",
+            payment: newPayment,
+            investment: newInvestment
+        });
+
+    } catch (error) {
+        console.error("Manual Payment Error:", error);
+        res.status(500).json({ message: "Internal Server Error", error: error.message });
+    }
+};

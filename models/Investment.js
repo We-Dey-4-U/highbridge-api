@@ -12,7 +12,9 @@ const InvestmentSchema = new mongoose.Schema({
         enum: ["Pending", "Active", "Cancelled"], 
         default: "Pending" 
     },
-    tx_ref: { type: String, required: true, unique: true }, 
+    tx_ref: { type: String, required: true, unique: true },
+    paymentMethod: { type: String, required: true, enum: ["flutterwave", "manual"] }, // Payment method
+    receipt: { type: String, required: function() { return this.paymentMethod === "manual"; } } // Only required for manual 
 });
 
 // Define plan durations and ROI percentages

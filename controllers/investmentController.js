@@ -4,56 +4,59 @@ const User = require("../models/User");
 // Create a new investment
 exports.createInvestment = async (req, res) => {
   try {
-    const { plan, amount, tx_ref } = req.body;
-    const userId = req.user.id;
+      const { plan, amount, tx_ref, paymentMethod, receipt } = req.body;
+      const userId = req.user.id;
 
-    if (!plan || !amount || !tx_ref) {
-      return res.status(400).json({ error: "All fields are required" });
-    }
+      if (!plan || !amount || !tx_ref || !paymentMethod) {
+          return res.status(400).json({ error: "All fields are required" });
+      }
 
-    // Ensure the plan is valid
-    const validPlans = ["6m", "9m", "12m", "18m"]; // Match schema format
-    if (!validPlans.includes(plan)) {
-      return res.status(400).json({ error: "Invalid investment plan" });
-    }
+      if (paymentMethod === "manual" && !receipt) {
+          return res.status(400).json({ error: "Receipt is required for manual payments" });
+      }
 
-    const user = await User.findById(userId);
-    if (!user) return res.status(404).json({ error: "User not found" });
+      const validPlans = ["6months", "9months", "12months", "18months"];
+      if (!validPlans.includes(plan)) {
+          return res.status(400).json({ error: "Invalid investment plan" });
+      }
 
-    // Create the investment
-    const newInvestment = new Investment({
-      user: userId,
-      plan,
-      amount,
-      tx_ref,
-      status: "Pending",
-    });
+      const user = await User.findById(userId);
+      if (!user) return res.status(404).json({ error: "User not found" });
 
-    await newInvestment.save();
+      const newInvestment = new Investment({
+          user: userId,
+          plan,
+          amount,
+          tx_ref,
+          paymentMethod,
+          receipt: paymentMethod === "manual" && receipt ? receipt : undefined,
+      });
 
-    // Add investment to user profile
-    user.investments.push(newInvestment._id);
-    await user.save();
-await user.populate("investments");
+      await newInvestment.save();
 
-    res.status(201).json({
-      message: "Investment created successfully",
-      investment: {
-        id: newInvestment._id,
-        plan: newInvestment.plan,
-        amount: newInvestment.amount,
-        startDate: newInvestment.startDate,
-        maturityDate: newInvestment.maturityDate,
-        expectedReturns: newInvestment.expectedReturns, // Corrected field name
-        status: newInvestment.status,
-      },
-    });
+      user.investments.push(newInvestment._id);
+      await user.save();
+      await user.populate("investments");
+
+      res.status(201).json({
+          message: "Investment created successfully",
+          investment: {
+              id: newInvestment._id,
+              plan: newInvestment.plan,
+              amount: newInvestment.amount,
+              startDate: newInvestment.startDate,
+              maturityDate: newInvestment.maturityDate,
+              expectedReturns: newInvestment.expectedReturns,
+              status: newInvestment.status,
+              paymentMethod: newInvestment.paymentMethod,
+              receipt: newInvestment.paymentMethod === "manual" ? newInvestment.receipt : null
+          },
+      });
   } catch (error) {
-    console.error("Error creating investment:", error);
-    res.status(500).json({ error: "Server error" });
+      console.error("Error creating investment:", error);
+      res.status(500).json({ error: "Server error" });
   }
 };
-
 
 
 
