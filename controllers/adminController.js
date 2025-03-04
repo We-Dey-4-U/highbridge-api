@@ -122,3 +122,35 @@ exports.approveManualPayment = async (req, res) => {
     res.status(500).json({ message: "Server Error", error: error.message });
   }
 };
+
+
+
+
+
+// Delete an investment
+exports.deleteInvestment = async (req, res) => {
+  try {
+    const { investmentId } = req.params;
+
+    const investment = await Investment.findById(investmentId);
+    if (!investment) {
+      return res.status(404).json({ message: "Investment not found" });
+    }
+
+    // Check if payment was not made within 24 hours for manual payments
+    if (investment.paymentMethod === "manual" && investment.status === "Pending") {
+      const timeElapsed = (Date.now() - new Date(investment.createdAt).getTime()) / (1000 * 60 * 60); // Convert to hours
+      if (timeElapsed > 24) {
+        await Investment.findByIdAndDelete(investmentId);
+        return res.status(200).json({ message: "Investment deleted due to unpaid manual payment" });
+      } else {
+        return res.status(400).json({ message: "Investment cannot be deleted yet, 24 hours not elapsed" });
+      }
+    }
+
+    res.status(400).json({ message: "Only pending manual investments can be deleted after 24 hours" });
+  } catch (error) {
+    console.error("Error deleting investment:", error);
+    res.status(500).json({ message: "Server Error", error: error.message });
+  }
+};

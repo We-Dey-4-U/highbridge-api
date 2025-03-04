@@ -61,12 +61,17 @@ exports.registerUser = async (req, res) => {
     let referer = null;
     if (referralCode) {
       const referringUser = await User.findOne({ referralCode });
+    
+      console.log("Referring User Found:", referringUser); // Debugging
+    
       if (referringUser) {
-        referer = referringUser.name;
+        referer = referringUser.name; // Assign referer's name
       } else {
+        console.log("Invalid referral code provided:", referralCode);
         return res.status(400).json({ message: "Invalid referral code" });
       }
     }
+
 
     const newUser = new User({
       name,
@@ -75,6 +80,8 @@ exports.registerUser = async (req, res) => {
       password,
       role: userRole,
       kycData: {},
+      referralCode, // Store generated referral code
+      referer, // Assign the referer's name
     });
 
     await newUser.save();
@@ -161,36 +168,17 @@ exports.updateKYC = async (req, res) => {
       }
 
       // Parse nested JSON fields if they are received as strings
-      if (typeof req.body.nextOfKin === "string") {
-        try {
-          updatedKYCData.nextOfKin = JSON.parse(req.body.nextOfKin);
-        } catch (e) {
-          console.error("[PARSE ERROR] Invalid nextOfKin JSON:", e);
-          return res.status(400).json({ message: "Invalid nextOfKin format" });
-        }
+      try {
+        updatedKYCData.nextOfKin = typeof req.body.nextOfKin === "string" ? JSON.parse(req.body.nextOfKin) : req.body.nextOfKin || {};
+        updatedKYCData.bankDetails = typeof req.body.bankDetails === "string" ? JSON.parse(req.body.bankDetails) : req.body.bankDetails || {};
+        updatedKYCData.corporateInfo = typeof req.body.corporateInfo === "string" ? JSON.parse(req.body.corporateInfo) : req.body.corporateInfo || {};
+      } catch (e) {
+        console.error("[PARSE ERROR] Invalid JSON:", e);
+        return res.status(400).json({ message: "Invalid JSON format in KYC data" });
       }
 
-      if (typeof req.body.bankDetails === "string") {
-        try {
-          updatedKYCData.bankDetails = JSON.parse(req.body.bankDetails);
-        } catch (e) {
-          console.error("[PARSE ERROR] Invalid bankDetails JSON:", e);
-          return res.status(400).json({ message: "Invalid bankDetails format" });
-        }
-      }
-
-      if (typeof req.body.corporateInfo === "string") {
-        try {
-          updatedKYCData.corporateInfo = JSON.parse(req.body.corporateInfo);
-        } catch (e) {
-          console.error("[PARSE ERROR] Invalid corporateInfo JSON:", e);
-          return res.status(400).json({ message: "Invalid corporateInfo format" });
-        }
-      }
-
-      // Handle file upload
-       // Handle uploaded files
-       if (req.files?.idDocumentImage) {
+      // Handle uploaded files
+      if (req.files?.idDocumentImage) {
         updatedKYCData.idDocumentImage = req.files.idDocumentImage[0].path;
       }
 
@@ -198,16 +186,11 @@ exports.updateKYC = async (req, res) => {
         updatedKYCData.passportImage = req.files.passportImage[0].path;
       }
 
-      // Ensure empty fields are cleaned up
-      const cleanData = (obj) => {
-        return Object.fromEntries(
-          Object.entries(obj).filter(([_, v]) => v !== "")
-        );
-      };
-
-      updatedKYCData.nextOfKin = cleanData(updatedKYCData.nextOfKin || {});
-      updatedKYCData.bankDetails = cleanData(updatedKYCData.bankDetails || {});
-      updatedKYCData.corporateInfo = cleanData(updatedKYCData.corporateInfo || {});
+      // Clean empty fields
+      const cleanData = (obj) => Object.fromEntries(Object.entries(obj).filter(([_, v]) => v !== ""));
+      updatedKYCData.nextOfKin = cleanData(updatedKYCData.nextOfKin);
+      updatedKYCData.bankDetails = cleanData(updatedKYCData.bankDetails);
+      updatedKYCData.corporateInfo = cleanData(updatedKYCData.corporateInfo);
 
       // Update user KYC data
       const user = await User.findByIdAndUpdate(
@@ -221,6 +204,21 @@ exports.updateKYC = async (req, res) => {
       }
 
       console.log("[SUCCESS] KYC data updated successfully for user:", userId);
+
+      // 🛑 🛑 🛑 SEND EMAIL TO ADMIN 🛑 🛑 🛑
+      const adminEmail = "accounts@highbridgehomes.ltd"; // Change this to the actual admin email
+      const emailSubject = "🔔 New KYC Submission";
+      const emailBody = `
+        <h3>New KYC Submission</h3>
+        <p><strong>User:</strong> ${user.name} (${user.email})</p>
+        <p><strong>ID Document Type:</strong> ${req.body.idDocumentType}</p>
+        <p><strong>Submitted at:</strong> ${new Date().toLocaleString()}</p>
+        <p>Please review the KYC details in the admin panel.</p>
+      `;
+
+      await sendEmail(adminEmail, emailSubject, emailBody);
+      console.log("📧 KYC submission email sent to admin");
+
       res.status(200).json({ message: "KYC Updated Successfully", kyc: user.kycData });
     });
   } catch (error) {
