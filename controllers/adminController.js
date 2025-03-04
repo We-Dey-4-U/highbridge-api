@@ -1,5 +1,6 @@
 const User = require("../models/User");
 const Investment = require("../models/Investment");
+const Payment = require("../models/Payment");
 
 // Get all users
 exports.getAllUsers = async (req, res) => {
@@ -70,5 +71,54 @@ exports.getAllInvestments = async (req, res) => {
     res.status(200).json(investments);
   } catch (error) {
     res.status(500).json({ message: "Server Error" });
+  }
+};
+
+
+
+
+
+
+exports.approveManualPayment = async (req, res) => {
+  try {
+    const { investmentId } = req.params;
+
+    // Ensure the user is an admin (middleware should handle this, but extra check)
+    if (!req.user || req.user.role !== "admin") {
+      return res.status(403).json({ message: "Unauthorized: Admins only" });
+    }
+
+    // Find the investment record
+    const investment = await Investment.findById(investmentId);
+    if (!investment) {
+      return res.status(404).json({ message: "Investment not found" });
+    }
+
+    // Find the corresponding payment record
+    const payment = await Payment.findOne({ investment: investmentId });
+    if (!payment) {
+      return res.status(404).json({ message: "Payment record not found" });
+    }
+
+    // Ensure it's a manual payment
+    if (investment.paymentMethod !== "manual") {
+      return res.status(400).json({ message: "Only manual payments can be approved manually" });
+    }
+
+    // Update investment and payment status
+    investment.status = "Active";
+    await investment.save();
+
+    payment.status = "Completed";
+    await payment.save();
+
+    res.status(200).json({
+      message: "Manual payment approved successfully",
+      investment,
+      payment,
+    });
+  } catch (error) {
+    console.error("Error approving manual payment:", error);
+    res.status(500).json({ message: "Server Error", error: error.message });
   }
 };

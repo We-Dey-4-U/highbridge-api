@@ -6,7 +6,8 @@ const {
   deleteUser,
   getKYCRequests,
   updateKYCStatus,
-  getAllInvestments
+  getAllInvestments,
+  approveManualPayment
 } = require("../controllers/adminController");
 
 // Protect all routes with adminAuth middleware
@@ -15,5 +16,7 @@ router.delete("/users/:userId", adminAuth, deleteUser);
 router.get("/kyc-requests", adminAuth, getKYCRequests);
 router.patch("/kyc/:userId", adminAuth, updateKYCStatus);
 router.get("/investments", adminAuth, getAllInvestments);
+// Admin approves manual payment
+router.put("/approve-payment/:investmentId", adminAuth, approveManualPayment);
 
 module.exports = router;
