@@ -206,7 +206,7 @@ exports.updateKYC = async (req, res) => {
       console.log("[SUCCESS] KYC data updated successfully for user:", userId);
 
       // 🛑 🛑 🛑 SEND EMAIL TO ADMIN 🛑 🛑 🛑
-      const adminEmail = "accounts@highbridgehomes.ltd"; // Change this to the actual admin email
+      const adminEmail = "ahighbridge44@gmail.com"; // Change this to the actual admin email
       const emailSubject = "🔔 New KYC Submission";
       const emailBody = `
         <h3>New KYC Submission</h3>
