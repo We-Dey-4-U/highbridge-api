@@ -1,9 +1,12 @@
 const express = require('express');
 const router = express.Router();
 const staffReportController = require('../controllers/staffReportController');
+const multer = require('multer');
 
-// Create a new staff report
-router.post('/staff-reports', staffReportController.createStaffReport);
+// Set up Multer for handling file uploads
+const upload = multer({ dest: 'uploads/' });
+
+router.post('/staff-reports', upload.single('image'), staffReportController.createStaffReport);
 
 // Get all staff reports
 router.get('/staff-reports', staffReportController.getAllStaffReports);

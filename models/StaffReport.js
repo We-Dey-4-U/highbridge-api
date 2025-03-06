@@ -17,7 +17,6 @@ const staffReportSchema = new mongoose.Schema({
     email: {
       type: String,
       required: true,
-      unique: true, // Ensuring the email is unique
     },
     mobileNumber: {
       type: String, // Changed from Number to String for flexibility
@@ -32,7 +31,7 @@ const staffReportSchema = new mongoose.Schema({
     },
     privateNote: {
       type: String,
-      required: true,
+      required: false, // Now optional
     },
     date: {
       type: Date,
@@ -45,6 +44,7 @@ const staffReportSchema = new mongoose.Schema({
     timeOut: {
       type: String,
     },
+    image: { type: String, required: true }, // Store image path
 }, { timestamps: true });
 
 // Create and export the StaffReport model

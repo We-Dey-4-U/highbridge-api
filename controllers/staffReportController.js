@@ -1,44 +1,72 @@
+const multer = require('multer');
+const path = require('path');
+const StaffReport = require('../models/StaffReport'); // Ensure correct path
 
-// Create a new staff report
-const StaffReport = require('../models/StaffReport');
+// Configure Multer storage (Save to 'uploads' folder)
+const storage = multer.diskStorage({
+    destination: (req, file, cb) => {
+        cb(null, 'uploads/');
+    },
+    filename: (req, file, cb) => {
+        cb(null, `${Date.now()}-${file.originalname}`);
+    }
+});
 
+// Only accept image files from camera
+const fileFilter = (req, file, cb) => {
+    if (file.mimetype.startsWith('image/')) {
+        cb(null, true);
+    } else {
+        cb(new Error('Only images are allowed'), false);
+    }
+};
 
+const upload = multer({ storage, fileFilter });
 
+// Update `createStaffReport` to include image upload
 exports.createStaffReport = async (req, res) => {
     try {
-      const { branch, name, email, mobileNumber, privateNote, date, timeIn, timeOut } = req.body;
-  
-      // Get today's date (YYYY-MM-DD format)
-      const today = new Date().toISOString().split('T')[0];
-  
-      // Count staff reports for today
-      const todayCount = await StaffReport.countDocuments({ date: today });
-  
-      if (todayCount >= 20) {
-        return res.status(400).json({ message: 'Maximum 20 staff reports allowed per day' });
-      }
-  
-      // Assign serial number (starts from 1 daily)
-      const sn = todayCount + 1;
-  
-      const newStaffReport = new StaffReport({
-        sn,
-        branch,
-        name,
-        email,
-        mobileNumber,
-        privateNote,
-        date: today, // Ensure date is stored as today
-        timeIn,
-        timeOut,
-      });
-  
-      await newStaffReport.save();
-      res.status(201).json({ message: 'Staff report created successfully!', data: newStaffReport });
+        const { branch, name, email, mobileNumber, privateNote, timeIn, timeOut } = req.body;
+        const image = req.file?.path; // Get uploaded image path
+
+        if (!image) {
+            return res.status(400).json({ message: 'Image is required! Capture your photo.' });
+        }
+
+        // Format today's date
+        const today = new Date();
+        const formattedDate = `${today.getDate()}/${today.getMonth() + 1}/${today.getFullYear()}`;
+
+        // Prevent multiple reports per user per day
+        const userCount = await StaffReport.countDocuments({ date: formattedDate, name, email });
+        if (userCount >= 1) {
+            return res.status(400).json({ message: 'You have already registered today.' });
+        }
+
+        // Assign serial number
+        const todayCount = await StaffReport.countDocuments({ date: formattedDate });
+        const sn = todayCount + 1;
+
+        const newStaffReport = new StaffReport({
+            sn,
+            branch,
+            name,
+            email,
+            mobileNumber,
+            privateNote,
+            date: formattedDate,
+            timeIn,
+            timeOut,
+            image, // Save image path
+        });
+
+        await newStaffReport.save();
+        res.status(201).json({ message: 'Staff report created successfully!', data: newStaffReport });
     } catch (error) {
-      res.status(400).json({ message: 'Error creating staff report', error: error.message });
+        res.status(500).json({ message: 'Error creating staff report', error: error.message });
     }
-  };
+};
+
 
 
 // Get all staff reports
