@@ -42,36 +42,33 @@ exports.registerUser = async (req, res) => {
     const existingUser = await User.findOne({ email });
     if (existingUser) return res.status(400).json({ message: "User already exists" });
 
-    // Check if there is any admin in the database
+    // Check if there's already an admin
     const existingAdmin = await User.findOne({ role: "admin" });
 
     let userRole = "user";
     if (role === "admin") {
       if (existingAdmin) {
-        // If there's already an admin, enforce authentication
         if (!req.user || req.user.role !== "admin") {
           return res.status(403).json({ message: "Only admins can create new admins" });
         }
       } else {
-        // If no admin exists, allow this registration as admin
-        userRole = "admin";
+        userRole = "admin"; // First registered admin
       }
     }
 
+    // **Handle Referral System**
     let referer = null;
     if (referralCode) {
       const referringUser = await User.findOne({ referralCode });
-    
-      console.log("Referring User Found:", referringUser); // Debugging
-    
       if (referringUser) {
-        referer = referringUser.name; // Assign referer's name
+        referer = referringUser.name; // Save referer’s name
       } else {
-        console.log("Invalid referral code provided:", referralCode);
         return res.status(400).json({ message: "Invalid referral code" });
       }
     }
 
+    // **Generate a unique referral code if not provided**
+    const generatedReferralCode = Math.floor(1000 + Math.random() * 9000).toString();
 
     const newUser = new User({
       name,
@@ -80,8 +77,8 @@ exports.registerUser = async (req, res) => {
       password,
       role: userRole,
       kycData: {},
-      referralCode, // Store generated referral code
-      referer, // Assign the referer's name
+      referralCode: generatedReferralCode, // Auto-generate referral code
+      referer, // Store referer's name
     });
 
     await newUser.save();
