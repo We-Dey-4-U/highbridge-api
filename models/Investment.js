@@ -6,6 +6,7 @@ const InvestmentSchema = new mongoose.Schema({
     plan: { type: String, required: true, enum: ["6months", "9months", "12months", "18months"] },
     startDate: { type: Date, default: Date.now },
     maturityDate: { type: Date, required: true },
+    countdown: { type: Number, default: 0 },
     expectedReturns: { type: Number, required: false },  // Should be assigned explicitly
     status: { 
         type: String, 
@@ -40,6 +41,19 @@ InvestmentSchema.pre('validate', function (next) {
         this.maturityDate = new Date(this.startDate);
         this.maturityDate.setDate(this.maturityDate.getDate() + 365); // Default to 1 year
         this.expectedReturns = this.amount * 1.5;  // Default 50% ROI
+    }
+
+    next();
+});
+
+// Automatically update countdown before saving
+InvestmentSchema.pre("save", function (next) {
+    const now = new Date();
+    this.countdown = Math.ceil((this.maturityDate - now) / (1000 * 60 * 60 * 24));
+
+    if (this.countdown <= 0) {
+        this.status = "Matured";
+        this.countdown = 0;
     }
 
     next();

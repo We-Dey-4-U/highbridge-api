@@ -1,6 +1,7 @@
 const User = require("../models/User");
 const Investment = require("../models/Investment");
 const Payment = require("../models/Payment");
+const { sendEmail } = require("../config/emailService");
 
 // Get all users
 exports.getAllUsers = async (req, res) => {
@@ -79,17 +80,19 @@ exports.getAllInvestments = async (req, res) => {
 
 
 
+
+
 exports.approveManualPayment = async (req, res) => {
   try {
     const { investmentId } = req.params;
 
-    // Ensure the user is an admin (middleware should handle this, but extra check)
+    // Ensure the user is an admin
     if (!req.user || req.user.role !== "admin") {
       return res.status(403).json({ message: "Unauthorized: Admins only" });
     }
 
     // Find the investment record
-    const investment = await Investment.findById(investmentId);
+    const investment = await Investment.findById(investmentId).populate("user");
     if (!investment) {
       return res.status(404).json({ message: "Investment not found" });
     }
@@ -112,8 +115,22 @@ exports.approveManualPayment = async (req, res) => {
     payment.status = "Completed";
     await payment.save();
 
+    // Send email notification to the user
+    const emailSubject = "Payment Approved - Investment Activated";
+    const emailBody = `
+      <h3>Dear ${investment.user.name},</h3>
+      <p>Your manual payment of <strong>${payment.amount}</strong> has been approved.</p>
+      <p>Your investment is now active, and you can track its progress in your dashboard.</p>
+      <p>Thank you for investing with us!</p>
+      <br>
+      <p>Best Regards,</p>
+      <p>Highbridge Agrovest</p>
+    `;
+
+    await sendEmail(investment.user.email, emailSubject, emailBody);
+
     res.status(200).json({
-      message: "Manual payment approved successfully",
+      message: "Manual payment approved successfully. Email sent to user.",
       investment,
       payment,
     });
@@ -126,8 +143,6 @@ exports.approveManualPayment = async (req, res) => {
 
 
 
-
-// Delete an investment
 exports.deleteInvestment = async (req, res) => {
   try {
     const { investmentId } = req.params;
@@ -137,14 +152,25 @@ exports.deleteInvestment = async (req, res) => {
       return res.status(404).json({ message: "Investment not found" });
     }
 
+    console.log("Investment Found:", investment); // Debugging
+
+    // Ensure createdAt is properly parsed
+    const createdAt = new Date(investment.createdAt);
+    const currentTime = new Date();
+
+    console.log("Investment Created At:", createdAt.toISOString()); // Debugging
+    console.log("Current Time:", currentTime.toISOString()); // Debugging
+
+    const timeElapsed = (currentTime - createdAt) / (1000 * 60 * 60); // Convert to hours
+    console.log(`Time Elapsed: ${timeElapsed} hours`); // Debugging
+
     // Check if payment was not made within 24 hours for manual payments
     if (investment.paymentMethod === "manual" && investment.status === "Pending") {
-      const timeElapsed = (Date.now() - new Date(investment.createdAt).getTime()) / (1000 * 60 * 60); // Convert to hours
-      if (timeElapsed > 24) {
+      if (timeElapsed >= 24) {
         await Investment.findByIdAndDelete(investmentId);
         return res.status(200).json({ message: "Investment deleted due to unpaid manual payment" });
       } else {
-        return res.status(400).json({ message: "Investment cannot be deleted yet, 24 hours not elapsed" });
+        return res.status(400).json({ message: `Investment cannot be deleted yet, only ${timeElapsed.toFixed(2)} hours have passed` });
       }
     }
 

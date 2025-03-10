@@ -19,8 +19,8 @@ exports.getUserDashboard = async (req, res) => {
 
     // Fetch user's investments & sort by startDate (newest first)
     const investments = await Investment.find({ user: userId })
-      .select("plan amount startDate maturityDate expectedReturns status")
-      .sort({ startDate: -1 });
+  .select("plan amount startDate maturityDate expectedReturns status countdown paymentMethod")
+  .sort({ startDate: -1 });
 
     // Calculate total invested amount
     const totalInvestments = investments.reduce((sum, inv) => sum + inv.amount, 0);

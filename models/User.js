@@ -42,6 +42,8 @@ const UserSchema = new mongoose.Schema({
   email: { type: String, unique: true, index: true },
   phone: { type: String, required: true },
   password: { type: String, required: true },
+  resetPasswordToken: String,
+  resetPasswordExpires: Date,
   referralCode: { type: String, unique: true, default: generateReferralCode },
   referer: { type: String, default: null },
   profileImage: { type: String },
