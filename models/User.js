@@ -16,6 +16,7 @@ const kycSchema = new mongoose.Schema({
   idDocumentType: { type: String, enum: ["passport", "driver_license", "national_id"], default: "passport" },
   passportImage: { type: String, default: "" }, 
   idDocumentImage: { type: String, default: "" },
+  signatureImage: { type: String, default: "" }, // Added signatureImage field
   nextOfKin: {
     name: { type: String, default: "" },
     relationship: { type: String, default: "" },

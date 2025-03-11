@@ -19,7 +19,8 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage }).fields([
   { name: "idDocumentImage", maxCount: 1 },
-  { name: "passportImage", maxCount: 1 }
+  { name: "passportImage", maxCount: 1 },
+  { name: "signatureImage", maxCount: 1 } // Added signatureImage
 ]);
 
 // Middleware to validate KYC fields
@@ -196,6 +197,9 @@ exports.updateKYC = async (req, res) => {
       if (req.files?.passportImage) {
         updatedKYCData.passportImage = req.files.passportImage[0].path;
       }
+      if (req.files?.signatureImage) {
+        updatedKYCData.signatureImage = req.files.signatureImage[0].path;
+      }
 
       // Clean empty fields
       const cleanData = (obj) => Object.fromEntries(Object.entries(obj).filter(([_, v]) => v !== ""));
@@ -255,7 +259,7 @@ exports.forgotPassword = async (req, res) => {
 
     await user.save();
     
-    const resetLink = `http://localhost:3000/reset-password/${resetToken}`;
+    const resetLink = `http://localhost:3001/reset-password/${resetToken}`;
     await sendEmail(user.email, "Reset Password", `<p>Click <a href="${resetLink}">here</a> to reset your password.</p>`);
 
     res.json({ message: "Password reset email sent." });
