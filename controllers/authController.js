@@ -241,10 +241,6 @@ exports.updateKYC = async (req, res) => {
 
 
 
-
-
-
-
 // **Change Password**
 exports.forgotPassword = async (req, res) => {
   try {
