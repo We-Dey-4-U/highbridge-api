@@ -119,12 +119,12 @@ exports.approveManualPayment = async (req, res) => {
     const emailSubject = "Payment Approved - Investment Activated";
     const emailBody = `
       <h3>Dear ${investment.user.name},</h3>
-      <p>Your manual payment of <strong>${payment.amount}</strong> has been approved.</p>
-      <p>Your investment is now active, and you can track its progress in your dashboard.</p>
-      <p>Thank you for investing with us!</p>
-      <br>
-      <p>Best Regards,</p>
-      <p>Highbridge Agrovest</p>
+<p>We are pleased to inform you that your manual payment of <strong>${payment.amount}</strong> for your Highbridge Agrovest investment has been successfully approved.</p>
+<p>Your investment is now active, and you can monitor its progress in your dashboard.</p>
+<p>Thank you for choosing Highbridge Agrovest. We appreciate your trust in us and look forward to helping you achieve your financial goals.</p>
+<br>
+<p>Best regards,</p>
+<p><strong>Highbridge Agrovest</strong></p>
     `;
 
     await sendEmail(investment.user.email, emailSubject, emailBody);
