@@ -259,7 +259,7 @@ exports.forgotPassword = async (req, res) => {
 
     await user.save();
     
-    const resetLink = `http://localhost:3001/reset-password/${resetToken}`;
+    const resetLink = `https://mediumspringgreen-quail-602850.hostingersite.com//reset-password/${resetToken}`;
     await sendEmail(user.email, "Reset Password", `<p>Click <a href="${resetLink}">here</a> to reset your password.</p>`);
 
     res.json({ message: "Password reset email sent." });
