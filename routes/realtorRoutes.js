@@ -1,9 +1,10 @@
 const express = require("express");
-const { registerRealtor, getAllRealtors } = require("../controllers/realtorController");
+const { registerRealtor } = require("../controllers/realtorController"); // ❌ Removed getAllRealtors
 
 const router = express.Router();
 
 router.post("/register", registerRealtor);
-router.get("/realtors", getAllRealtors); // For admin
+
+// ❌ Removed: router.get("/realtors", getAllRealtors);
 
 module.exports = router;

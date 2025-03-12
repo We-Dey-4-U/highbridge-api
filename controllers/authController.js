@@ -72,6 +72,9 @@ exports.registerUser = async (req, res) => {
     // **Generate a unique referral code if not provided**
     const generatedReferralCode = Math.floor(1000 + Math.random() * 9000).toString();
 
+     // **Generate Email Verification Token** (✅ Fix Applied)
+     const emailVerificationToken = crypto.randomBytes(32).toString("hex");
+
     const newUser = new User({
       name,
       email,
@@ -81,13 +84,26 @@ exports.registerUser = async (req, res) => {
       kycData: {},
       referralCode: generatedReferralCode, // Auto-generate referral code
       referer, // Store referer's name
+      isVerified: false, // User starts as unverified
+      emailVerificationToken, // Store the verification token
     });
 
     await newUser.save();
-    await sendEmail(email, "Welcome!", `<h3>Welcome, ${name}!</h3><p>Your account has been created successfully!</p>`);
+
+    // **Send Verification Email**
+    const verificationLink = `${process.env.BASE_URL}/api/auth/verify-email?token=${emailVerificationToken}`;
+
+    await sendEmail(email, "Welcome to Our Platform - Verify Your Email", `
+      <h3>Welcome, ${name}!</h3>
+      <p>Thank you for signing up. We're excited to have you on board.</p>
+      <p>To get started, please verify your email address by clicking the confirmation link below:</p>
+      <p><a href="${verificationLink}" style="background-color: #007bff; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">Verify Email</a></p>
+      <p>If you did not create this account, please ignore this email.</p>
+      <p>Best regards,<br> Your Company Name</p>
+    `);
 
     res.status(201).json({ 
-      message: "Registration successful", 
+      message: "Registration successful. Please check your email for verification.",
       role: newUser.role,
       referralCode: newUser.referralCode, 
       referer: newUser.referer 
@@ -99,6 +115,34 @@ exports.registerUser = async (req, res) => {
   }
 };
 
+
+
+
+exports.verifyEmail = async (req, res) => {
+  try {
+    const { token } = req.query;
+
+    if (!token) {
+      return res.status(400).json({ message: "Invalid or missing token" });
+    }
+
+    const user = await User.findOne({ emailVerificationToken: token });
+
+    if (!user) {
+      return res.status(400).json({ message: "Invalid or expired verification token" });
+    }
+
+    user.isVerified = true; // Mark user as verified
+    user.emailVerificationToken = null; // Remove the token
+    await user.save();
+
+    res.status(200).json({ message: "Email verified successfully. You can now log in." });
+
+  } catch (error) {
+    console.error("Email verification error:", error);
+    res.status(500).json({ message: "Server Error" });
+  }
+};
 
 
 // **Login User**

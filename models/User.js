@@ -43,6 +43,8 @@ const UserSchema = new mongoose.Schema({
   email: { type: String, unique: true, index: true },
   phone: { type: String, required: true },
   password: { type: String, required: true },
+  isVerified: { type: Boolean, default: false },
+  emailVerificationToken: String,
   resetPasswordToken: String,
   resetPasswordExpires: Date,
   referralCode: { type: String, unique: true, default: generateReferralCode },
