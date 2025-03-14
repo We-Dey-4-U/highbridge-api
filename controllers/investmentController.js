@@ -73,64 +73,108 @@ exports.getInvestments = async (req, res) => {
   try {
     const investments = await Investment.find({ user: req.user.id }).populate("user", "name email");
 
-    const formattedInvestments = investments.map(investment => ({
-      id: investment._id,
-      plan: investment.plan,
-      amount: investment.amount,
-      startDate: investment.startDate,
-      maturityDate: investment.maturityDate,
-      status: investment.status,
-      countdown: investment.countdown, // ✅ Ensure countdown is included
-      expectedReturn: investment.expectedReturn,
-      paymentMethod: investment.paymentMethod // ✅ Ensure paymentMethod is included
-    }));
+    const formattedInvestments = investments.map(investment => {
+      console.log(`Fetched investment ${investment._id}: Countdown = ${investment.countdown}`);
+
+      return {
+        id: investment._id,
+        plan: investment.plan,
+        amount: investment.amount,
+        startDate: investment.startDate,
+        maturityDate: investment.maturityDate,
+        status: investment.status,
+        countdown: investment.countdown, // ✅ Ensure updated countdown is included
+        expectedReturn: investment.expectedReturn,
+        paymentMethod: investment.paymentMethod
+      };
+    });
 
     res.json({ investments: formattedInvestments });
   } catch (error) {
-    console.error("Error fetching investments:", error);
+    console.error("❌ Error fetching investments:", error);
     res.status(500).json({ error: "Server error" });
   }
 };
+
+
+
 
 // ✅ Check and update investment maturity + countdown
 const checkInvestmentMaturity = async () => {
   try {
+    console.log("🚀 Running investment maturity check at:", new Date());
+
     const investments = await Investment.find({ status: "Active" });
 
-    for (let investment of investments) {
-      const daysLeft = Math.ceil((investment.maturityDate - new Date()) / (1000 * 60 * 60 * 24));
-      
-      investment.countdown = Math.max(daysLeft, 0);
-
-      if (daysLeft <= 0) {
-        investment.status = "Matured";
-      }
-
-      await investment.save();
+    if (investments.length === 0) {
+      console.log("✅ No active investments found.");
+      return;
     }
 
-    console.log("Investment maturity and countdown updated.");
+    for (let investment of investments) {
+      const today = new Date();
+      const startDate = new Date(investment.startDate);
+      const maturityDate = new Date(investment.maturityDate);
+
+      console.log(`\n🔹 Checking investment ${investment._id}`);
+      console.log(`   📌 Start Date: ${startDate}`);
+      console.log(`   📌 Maturity Date: ${maturityDate}`);
+      console.log(`   📌 Today: ${today}`);
+
+      // ✅ Calculate countdown days
+      let daysLeft = Math.ceil((maturityDate - today) / (1000 * 60 * 60 * 24));
+      console.log(`   ⏳ Days Left: ${daysLeft}`);
+
+      // Ensure countdown doesn't go below 0
+      let newCountdown = Math.max(daysLeft, 0);
+      let newStatus = investment.status;
+
+      if (daysLeft <= 0) {
+        newStatus = "Matured";
+      }
+
+      console.log(`   🔄 Updating Countdown to: ${newCountdown}, Status to: ${newStatus}`);
+
+      // ✅ Update in MongoDB properly
+      const updateResult = await Investment.updateOne(
+        { _id: investment._id },
+        { $set: { countdown: newCountdown, status: newStatus } }
+      );
+
+      console.log(`   ✅ MongoDB Update Result:`, updateResult);
+    }
+
+    console.log("✅ Investment maturity check completed.\n");
   } catch (error) {
-    console.error("Error updating investment countdown:", error);
+    console.error("❌ Error updating investment countdown:", error);
   }
 };
 
-// Run every 24 hours
+// ✅ Run function immediately when the server starts
+checkInvestmentMaturity();
 
+// ✅ Run every 24 hours
+const interval = 24 * 60 * 60 * 1000; // 24 hours
+setInterval(() => {
+  console.log("⏰ Scheduled checkInvestmentMaturity running...");
+  checkInvestmentMaturity();
+}, interval);
 
-// ✅ Automatically run the function every 24 hours
-setInterval(checkInvestmentMaturity, 24 * 60 * 60 * 1000); // Runs daily
+console.log(`✅ setInterval scheduled to run every ${interval / (1000 * 60 * 60)} hours`);
 
-// ✅ Manually trigger investment maturity check
+// ✅ Manually trigger investment maturity check via API
 exports.checkInvestmentMaturity = async (req, res) => {
   try {
+    console.log("📢 Manual API request to check investment maturity...");
     await checkInvestmentMaturity();
     res.json({ message: "Investment maturity checked successfully." });
   } catch (error) {
-    console.error("Error checking maturity:", error);
+    console.error("❌ Error checking maturity:", error);
     res.status(500).json({ error: "Server error" });
   }
 };
+
+
 
 // ✅ Update Investment Status (e.g., Approve or Reject)
 exports.updateInvestmentStatus = async (req, res) => {
