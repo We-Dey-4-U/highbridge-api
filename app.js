@@ -25,7 +25,11 @@ const adminRoutes = require("./routes/adminRoutes");
 const app = express();
 
 // Middleware setup
-app.use(cors());
+app.use(cors({
+  origin: ["https://gold-caterpillar-482046.hostingersite.com", "http://localhost:3000"],  // Adjust as needed
+  methods: "GET,POST,PUT,PATCH,DELETE",
+  credentials: true
+}));
 app.use(bodyParser.json());
 
 
